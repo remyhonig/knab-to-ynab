@@ -1,0 +1,80 @@
+<?php
+require 'vendor/autoload.php';
+date_default_timezone_set('Europe/Amsterdam');
+
+use Rx\Subject\Subject;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Task\Project;
+
+
+$project = new Project('knab_to_ynab');
+
+/**
+ * @return \Rx\Observer\CallbackObserver
+ */
+function outputObserver()
+{
+    return new Rx\Observer\CallbackObserver(
+        function ($value) {
+            echo("$value\n");
+        },
+        function (Exception $error) {
+            echo(date("Y-m-d H:i:s") . " | Exception: " . $error->getMessage());
+        }
+    );
+}
+
+/*
+ * Date,Payee,Category,Memo,Outflow,Inflow
+    07/25/10,Sample Payee,,Sample Memo for an outflow,100.00,
+    07/26/10,Sample Payee 2,,Sample memo for an inflow,,500.00
+ */
+
+$project->addTask('convert', function () {
+    $src = $this->getInput()->getOption('src');
+
+    $csvExport = new Subject();
+    $csvExport->map(function($values) {
+        return implode(
+            ',',
+            array_map(
+                function($value) { return "\"$value\""; },
+                $values
+            )
+        );
+    })->subscribe(outputObserver());
+
+    $transformation = new Subject();
+    $transformation->map(function ($line) {
+        return str_getcsv($line, ';');
+
+    })->filter(function ($values) {
+        return count($values) > 1 && DateTimeImmutable::createFromFormat("d-m-Y", $values[1]);
+
+    })->map(function ($values) {
+        $date = DateTimeImmutable::createFromFormat("d-m-Y", $values[1]);
+        $amount = $values[4];
+        $sign = $values[3];
+        $payee = trim($values[6]);
+        $memo = trim($values[9]);
+        $newDate = $date->format('d/m/Y');
+        $newAmount = str_replace(',', '.', $amount);
+        $inflow = $sign == "C" ? $newAmount : '';
+        $outflow = $sign == "D" ? $newAmount : '';
+        return [$newDate, $payee, '', $memo, $outflow, $inflow];
+
+    })->subscribe($csvExport);
+
+    // the Observable::fromItereator factory function does not work with SplFileObject so I loop it here instead
+    $file = new SplFileObject($src);
+    $csvExport->onNext(["Date","Payee","Category","Memo","Outflow","Inflow"]);
+    foreach ($file as $line) {
+        $transformation->onNext($line);
+    }
+    $transformation->onCompleted();
+})
+    ->addOption('src', 's', InputOption::VALUE_REQUIRED, "Input file");
+
+# Return the project!
+return $project;

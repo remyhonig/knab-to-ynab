@@ -1,0 +1,31 @@
+{
+  "name": "remyhonig/knab2ynab",
+  "description": "Convert KNAB CSV to YNAB CSV",
+  "minimum-stability": "dev",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Remy Honig",
+      "email": "remy.honig@gmail.com"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/morrisonlevi/Ardent"
+    }
+  ],
+  "require": {
+    "task/filesystem": "~0.2",
+    "miljar/php-exif": "~0.4.0",
+    "task/task": "~0.6",
+    "task/cli": "~0.3",
+    "ray/di": "2.x-dev",
+    "reactivex/rxphp": "dev-master",
+    "beberlei/assert": "v2.4"
+  },
+  "require-dev": {
+    "phpspec/phpspec": "~2.0"
+  },
+  "autoload": {"psr-4": {"PhotoOrganize\\": "src/"}}
+}
